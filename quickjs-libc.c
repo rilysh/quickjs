@@ -680,38 +680,10 @@ static JSValue js_std_unsetenv(JSContext *ctx, JSValueConst this_val,
 static JSValue js_std_getenviron(JSContext *ctx, JSValueConst this_val,
                                  int argc, JSValueConst *argv)
 {
-    char **envp;
-    const char *name, *p, *value;
-    JSValue obj;
-    uint32_t idx;
-    size_t name_len;
-    JSAtom atom;
-    int ret;
-
-    obj = JS_NewObject(ctx);
-    if (JS_IsException(obj))
-        return JS_EXCEPTION;
-    envp = environ;
-    for(idx = 0; envp[idx] != NULL; idx++) {
-        name = envp[idx];
-        p = strchr(name, '=');
-        name_len = p - name;
-        if (!p)
-            continue;
-        value = p + 1;
-        atom = JS_NewAtomLen(ctx, name, name_len);
-        if (atom == JS_ATOM_NULL)
-            goto fail;
-        ret = JS_DefinePropertyValue(ctx, obj, atom, JS_NewString(ctx, value),
-                                     JS_PROP_C_W_E);
-        JS_FreeAtom(ctx, atom);
-        if (ret < 0)
-            goto fail;
-    }
-    return obj;
- fail:
-    JS_FreeValue(ctx, obj);
-    return JS_EXCEPTION;
+    /**
+     * Ignore the whole implementation for OpenBSD
+    */
+    return JS_UNDEFINED;
 }
 
 static JSValue js_std_gc(JSContext *ctx, JSValueConst this_val,
@@ -1924,7 +1896,7 @@ static JSValue js_os_signal(JSContext *ctx, JSValueConst this_val,
     JSOSSignalHandler *sh;
     uint32_t sig_num;
     JSValueConst func;
-    sighandler_t handler;
+    int *handler;
 
     if (!is_main_thread(rt))
         return JS_ThrowTypeError(ctx, "signal handler can only be set in the main thread");
@@ -2839,7 +2811,7 @@ static JSValue js_os_exec(JSContext *ctx, JSValueConst this_val,
     JSValueConst options, args = argv[0];
     JSValue val, ret_val;
     const char **exec_argv, *file = NULL, *str, *cwd = NULL;
-    char **envp = environ;
+    char **envp = NULL;
     uint32_t exec_argc, i;
     int ret, pid, status;
     BOOL block_flag = TRUE, use_path = TRUE;
@@ -3015,7 +2987,7 @@ static JSValue js_os_exec(JSContext *ctx, JSValueConst this_val,
     for(i = 0; i < exec_argc; i++)
         JS_FreeCString(ctx, exec_argv[i]);
     js_free(ctx, exec_argv);
-    if (envp != environ) {
+    if (envp) {
         char **p;
         p = envp;
         while (*p != NULL) {

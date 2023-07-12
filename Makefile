@@ -34,11 +34,8 @@ CONFIG_LTO=y
 # force 32 bit build for some utilities
 #CONFIG_M32=y
 
-ifdef CONFIG_DARWIN
-# use clang instead of gcc
 CONFIG_CLANG=y
 CONFIG_DEFAULT_AR=y
-endif
 
 # installation directory
 prefix=/usr/local
@@ -174,10 +171,10 @@ QJS_LIB_OBJS+=$(OBJDIR)/libbf.o
 QJS_OBJS+=$(OBJDIR)/qjscalc.o
 endif
 
-HOST_LIBS=-lm -ldl -lpthread
+HOST_LIBS=-lm -lpthread
 LIBS=-lm
 ifndef CONFIG_WIN32
-LIBS+=-ldl -lpthread
+LIBS+=-lpthread
 endif
 LIBS+=$(EXTRA_LIBS)
 

@@ -1,0 +1,159 @@
+diff --git a/Makefile b/Makefile
+index 49b1f6f..b360234 100644
+--- a/Makefile
++++ b/Makefile
+@@ -34,11 +34,8 @@ CONFIG_LTO=y
+ # force 32 bit build for some utilities
+ #CONFIG_M32=y
+ 
+-ifdef CONFIG_DARWIN
+-# use clang instead of gcc
+ CONFIG_CLANG=y
+ CONFIG_DEFAULT_AR=y
+-endif
+ 
+ # installation directory
+ prefix=/usr/local
+@@ -174,10 +171,10 @@ QJS_LIB_OBJS+=$(OBJDIR)/libbf.o
+ QJS_OBJS+=$(OBJDIR)/qjscalc.o
+ endif
+ 
+-HOST_LIBS=-lm -ldl -lpthread
++HOST_LIBS=-lm -lpthread
+ LIBS=-lm
+ ifndef CONFIG_WIN32
+-LIBS+=-ldl -lpthread
++LIBS+=-lpthread
+ endif
+ LIBS+=$(EXTRA_LIBS)
+ 
+diff --git a/qjs.c b/qjs.c
+index d56b843..ab2bd1b 100644
+--- a/qjs.c
++++ b/qjs.c
+@@ -152,7 +152,7 @@ static inline size_t js_trace_malloc_usable_size(void *ptr)
+     return malloc_usable_size(ptr);
+ #else
+     /* change this to `return 0;` if compilation fails */
+-    return malloc_usable_size(ptr);
++    return 0;
+ #endif
+ }
+ 
+@@ -274,7 +274,7 @@ static const JSMallocFunctions trace_mf = {
+     (size_t (*)(const void *))malloc_usable_size,
+ #else
+     /* change this to `NULL,` if compilation fails */
+-    malloc_usable_size,
++    NULL,
+ #endif
+ };
+ 
+diff --git a/qjsc.c b/qjsc.c
+index b9f1e4c..e9c0e9e 100644
+--- a/qjsc.c
++++ b/qjsc.c
+@@ -450,7 +450,6 @@ static int output_executable(const char *out_filename, const char *cfilename,
+              lib_dir, bn_suffix, lto_suffix);
+     *arg++ = libjsname;
+     *arg++ = "-lm";
+-    *arg++ = "-ldl";
+     *arg++ = "-lpthread";
+     *arg = NULL;
+     
+diff --git a/quickjs-libc.c b/quickjs-libc.c
+index e180dd0..ccc14c0 100644
+--- a/quickjs-libc.c
++++ b/quickjs-libc.c
+@@ -680,38 +680,10 @@ static JSValue js_std_unsetenv(JSContext *ctx, JSValueConst this_val,
+ static JSValue js_std_getenviron(JSContext *ctx, JSValueConst this_val,
+                                  int argc, JSValueConst *argv)
+ {
+-    char **envp;
+-    const char *name, *p, *value;
+-    JSValue obj;
+-    uint32_t idx;
+-    size_t name_len;
+-    JSAtom atom;
+-    int ret;
+-
+-    obj = JS_NewObject(ctx);
+-    if (JS_IsException(obj))
+-        return JS_EXCEPTION;
+-    envp = environ;
+-    for(idx = 0; envp[idx] != NULL; idx++) {
+-        name = envp[idx];
+-        p = strchr(name, '=');
+-        name_len = p - name;
+-        if (!p)
+-            continue;
+-        value = p + 1;
+-        atom = JS_NewAtomLen(ctx, name, name_len);
+-        if (atom == JS_ATOM_NULL)
+-            goto fail;
+-        ret = JS_DefinePropertyValue(ctx, obj, atom, JS_NewString(ctx, value),
+-                                     JS_PROP_C_W_E);
+-        JS_FreeAtom(ctx, atom);
+-        if (ret < 0)
+-            goto fail;
+-    }
+-    return obj;
+- fail:
+-    JS_FreeValue(ctx, obj);
+-    return JS_EXCEPTION;
++    /**
++     * Ignore the whole implementation for OpenBSD
++    */
++    return JS_UNDEFINED;
+ }
+ 
+ static JSValue js_std_gc(JSContext *ctx, JSValueConst this_val,
+@@ -1924,7 +1896,7 @@ static JSValue js_os_signal(JSContext *ctx, JSValueConst this_val,
+     JSOSSignalHandler *sh;
+     uint32_t sig_num;
+     JSValueConst func;
+-    sighandler_t handler;
++    int *handler;
+ 
+     if (!is_main_thread(rt))
+         return JS_ThrowTypeError(ctx, "signal handler can only be set in the main thread");
+@@ -2839,7 +2811,7 @@ static JSValue js_os_exec(JSContext *ctx, JSValueConst this_val,
+     JSValueConst options, args = argv[0];
+     JSValue val, ret_val;
+     const char **exec_argv, *file = NULL, *str, *cwd = NULL;
+-    char **envp = environ;
++    char **envp = NULL;
+     uint32_t exec_argc, i;
+     int ret, pid, status;
+     BOOL block_flag = TRUE, use_path = TRUE;
+@@ -3015,7 +2987,7 @@ static JSValue js_os_exec(JSContext *ctx, JSValueConst this_val,
+     for(i = 0; i < exec_argc; i++)
+         JS_FreeCString(ctx, exec_argv[i]);
+     js_free(ctx, exec_argv);
+-    if (envp != environ) {
++    if (envp) {
+         char **p;
+         p = envp;
+         while (*p != NULL) {
+diff --git a/quickjs.c b/quickjs.c
+index 7916013..565d421 100644
+--- a/quickjs.c
++++ b/quickjs.c
+@@ -1686,7 +1686,7 @@ static inline size_t js_def_malloc_usable_size(void *ptr)
+     return malloc_usable_size(ptr);
+ #else
+     /* change this to `return 0;` if compilation fails */
+-    return malloc_usable_size(ptr);
++    return 0;
+ #endif
+ }
+ 
+@@ -1760,7 +1760,7 @@ static const JSMallocFunctions def_malloc_funcs = {
+     (size_t (*)(const void *))malloc_usable_size,
+ #else
+     /* change this to `NULL,` if compilation fails */
+-    malloc_usable_size,
++    NULL,
+ #endif
+ };
+ 
